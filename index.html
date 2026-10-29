@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f7f8f4" />
+  <meta name="description" content="買い物前に、近くのお店の在庫をチェックできるデモアプリです。" />
+  <title>mikke｜お店の在庫チェック</title>
+  <style>
+    :root {
+      --ink: #20302b;
+      --muted: #7d8983;
+      --paper: #f7f8f4;
+      --card: #ffffff;
+      --line: #e8ece6;
+      --green: #2f765e;
+      --green-deep: #215542;
+      --mint: #dff1e6;
+      --lime: #e8f4a9;
+      --orange: #e59a54;
+      --red: #d96f64;
+      --shadow: 0 22px 70px rgba(26, 50, 39, .17);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 12% 16%, rgba(216, 236, 208, .75), transparent 28%),
+        radial-gradient(circle at 90% 84%, rgba(237, 226, 185, .55), transparent 25%),
+        #edf1eb;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(47,118,94,.3); outline-offset: 2px; }
+    .device {
+      position: relative;
+      width: 402px;
+      height: min(860px, calc(100dvh - 36px));
+      min-height: 650px;
+      padding: 8px;
+      border-radius: 44px;
+      background: #1e2a25;
+      box-shadow: var(--shadow), inset 0 0 0 1px rgba(255,255,255,.25);
+    }
+    .screen {
+      height: 100%;
+      overflow: hidden;
+      border-radius: 36px;
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .statusbar {
+      flex: 0 0 26px;
+      padding: 7px 23px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      background: var(--paper);
+    }
+    .status-icons { display: flex; gap: 5px; align-items: center; }
+    .signal { display: inline-flex; align-items: end; gap: 2px; height: 11px; }
+    .signal i { display: block; width: 3px; border-radius: 2px; background: var(--ink); }
+    .signal i:nth-child(1) { height: 4px; } .signal i:nth-child(2) { height: 6px; }
+    .signal i:nth-child(3) { height: 8px; } .signal i:nth-child(4) { height: 10px; }
+    .wifi { font-size: 12px; line-height: 1; transform: rotate(0deg); }
+    .battery { height: 9px; width: 17px; border: 1.3px solid var(--ink); border-radius: 3px; padding: 1.5px; position: relative; }
+    .battery:after { content: ""; position: absolute; right: -3px; top: 2px; height: 3px; width: 2px; border-radius: 0 2px 2px 0; background: var(--ink); }
+    .battery span { display: block; height: 100%; width: 75%; border-radius: 1px; background: var(--ink); }
+    .app-header {
+      flex: 0 0 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 21px 7px;
+      background: var(--paper);
+    }
+    .brand { display: flex; align-items: center; gap: 9px; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 12px; background: var(--green); color: white; box-shadow: 0 5px 12px rgba(47,118,94,.2); }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-word { font-size: 21px; line-height: 1; font-weight: 900; letter-spacing: -.06em; }
+    .brand-word span { color: var(--green); }
+    .header-actions { display: flex; gap: 8px; }
+    .icon-button { width: 37px; height: 37px; display: grid; place-items: center; background: #fff; border: 1px solid var(--line); border-radius: 13px; cursor: pointer; color: var(--ink); position: relative; }
+    .icon-button svg { width: 18px; height: 18px; }
+    .notification-dot { position: absolute; width: 7px; height: 7px; top: 7px; right: 7px; background: var(--orange); border: 1.5px solid white; border-radius: 50%; }
+    .app-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 19px 22px; scrollbar-width: none; }
+    .app-content::-webkit-scrollbar { display: none; }
+    .bottom-nav { flex: 0 0 71px; display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 14px 11px; background: rgba(255,255,255,.97); border-top: 1px solid #edf0eb; box-shadow: 0 -8px 24px rgba(28,48,37,.035); z-index: 3; }
+    .nav-item { border: 0; background: transparent; cursor: pointer; color: #9aa49e; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; border-radius: 15px; font-size: 10px; font-weight: 700; }
+    .nav-item svg { width: 21px; height: 21px; stroke-width: 1.9; }
+    .nav-item.active { color: var(--green); }
+    .nav-item.active svg { stroke-width: 2.5; }
+    .page { animation: pageIn .22s ease-out; }
+    @keyframes pageIn { from { opacity: .55; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .eyebrow { color: var(--green); font-size: 10px; font-weight: 900; letter-spacing: .12em; margin: 0 0 7px; }
+    .page-title { font-size: 25px; line-height: 1.28; letter-spacing: -.045em; margin: 0; font-weight: 900; }
+    .page-subtitle { color: var(--muted); font-size: 12px; margin: 8px 0 0; line-height: 1.7; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 23px 0 12px; }
+    .section-title { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: -.02em; }
+    .section-meta { font-size: 10px; color: var(--muted); }
+    .text-button { border: 0; padding: 4px 0; color: var(--green); background: transparent; font-weight: 800; cursor: pointer; font-size: 11px; white-space: nowrap; }
+    .hero-card { margin-top: 16px; padding: 19px 18px 17px; min-height: 150px; overflow: hidden; position: relative; border-radius: 23px; color: white; background: linear-gradient(125deg, #2e725a 0%, #3e8c6c 63%, #75ad81 100%); }
+    .hero-card:before { content: ""; position: absolute; width: 165px; height: 165px; border: 1px solid rgba(255,255,255,.19); border-radius: 50%; right: -41px; top: -58px; box-shadow: 0 0 0 18px rgba(255,255,255,.035), 0 0 0 37px rgba(255,255,255,.025); }
+    .hero-card:after { content: ""; position: absolute; width: 77px; height: 77px; border-radius: 26px; right: 17px; bottom: -23px; transform: rotate(27deg); background: rgba(224,245,177,.22); }
+    .hero-label { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid rgba(255,255,255,.27); border-radius: 20px; font-size: 9px; font-weight: 800; color: #f4ffed; background: rgba(255,255,255,.09); }
+    .hero-card h2 { margin: 12px 0 5px; font-size: 21px; line-height: 1.4; letter-spacing: -.04em; position: relative; z-index: 1; }
+    .hero-card p { margin: 0; color: rgba(255,255,255,.81); font-size: 10px; position: relative; z-index: 1; }
+    .hero-illustration { position: absolute; right: 24px; top: 48px; font-size: 49px; filter: drop-shadow(0 7px 10px rgba(13,45,30,.16)); transform: rotate(-7deg); z-index: 1; }
+    .scope-row { display: flex; gap: 7px; overflow-x: auto; margin: 0 -2px; padding: 1px 2px 3px; scrollbar-width: none; }
+    .scope-row::-webkit-scrollbar { display: none; }
+    .pill { flex: 0 0 auto; border: 1px solid var(--line); color: #7a867f; background: white; padding: 8px 13px; border-radius: 100px; font-size: 11px; font-weight: 800; cursor: pointer; transition: .16s; }
+    .pill.active { background: var(--ink); color: white; border-color: var(--ink); }
+    .category-row { display: flex; gap: 8px; overflow-x: auto; margin: 0 -19px; padding: 2px 19px 5px; scrollbar-width: none; }
+    .category-row::-webkit-scrollbar { display: none; }
+    .category-pill { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 13px; background: #fff; padding: 9px 12px; color: #76817b; font-size: 11px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 7px rgba(23,48,34,.025); }
+    .category-pill .cat-emoji { font-size: 14px; }
+    .category-pill.active { border-color: #bfd9c9; color: var(--green-deep); background: #eaf5ee; }
+    .product-list { display: flex; flex-direction: column; gap: 9px; }
+    .product-card { display: grid; grid-template-columns: 59px minmax(0,1fr) auto; align-items: center; gap: 11px; border: 1px solid #edf0eb; border-radius: 17px; background: white; padding: 10px; min-width: 0; cursor: pointer; text-align: left; color: inherit; width: 100%; box-shadow: 0 3px 12px rgba(33,55,42,.025); transition: transform .12s, border-color .12s; }
+    .product-card:active { transform: scale(.99); }
+    .product-visual { width: 59px; height: 62px; display: grid; place-items: center; border-radius: 13px; font-size: 29px; position: relative; overflow: hidden; }
+    .product-visual:after { content: ""; position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.27); right: -11px; bottom: -13px; }
+    .visual-green { background: #e3f1e3; } .visual-yellow { background: #f8f0d9; } .visual-blue { background: #e0edf3; } .visual-pink { background: #f5e4e0; } .visual-purple { background: #ebe5f6; } .visual-orange { background: #f7e6d7; }
+    .product-info { min-width: 0; }
+    .product-category { color: #8a958f; font-size: 9px; font-weight: 800; margin-bottom: 4px; }
+    .product-name { margin: 0; font-size: 12px; font-weight: 900; line-height: 1.45; overflow-wrap: anywhere; }
+    .product-price { margin-top: 4px; color: #7f8983; font-size: 10px; }
+    .stock-column { text-align: right; align-self: stretch; display: flex; align-items: flex-end; flex-direction: column; justify-content: center; min-width: 55px; }
+    .stock-badge { display: inline-flex; justify-content: center; align-items: center; gap: 4px; white-space: nowrap; border-radius: 8px; padding: 5px 7px; font-size: 9px; font-weight: 900; }
+    .stock-badge:before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .stock-good { color: #347d59; background: #e7f5eb; }
+    .stock-low { color: #aa7829; background: #fcf1d9; }
+    .stock-out { color: #bc6259; background: #fae9e6; }
+    .stock-number { margin-top: 7px; font-size: 10px; color: #737f78; font-weight: 700; white-space: nowrap; }
+    .stock-number strong { font-size: 14px; color: var(--ink); font-weight: 900; }
+    .stock-footnote { font-size: 9px; color: #9aa49d; margin: 10px 2px 0; line-height: 1.6; }
+    .empty-state { text-align: center; padding: 27px 18px; background: white; border: 1px dashed #dce5dc; border-radius: 17px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .empty-state .empty-icon { font-size: 28px; margin-bottom: 8px; }
+    .searchbox { display: flex; align-items: center; gap: 9px; margin-top: 17px; background: white; border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; height: 43px; }
+    .searchbox svg { width: 17px; height: 17px; stroke: #99a39d; flex: 0 0 auto; }
+    .searchbox input { min-width: 0; width: 100%; border: 0; outline: none; color: var(--ink); background: transparent; font-size: 12px; }
+    .searchbox input::placeholder { color: #aab2ad; }
+    .store-rail { display: flex; gap: 9px; overflow-x: auto; margin: 0 -19px; padding: 2px 19px 5px; scrollbar-width: none; }
+    .store-rail::-webkit-scrollbar { display: none; }
+    .store-card { flex: 0 0 161px; min-width: 0; position: relative; text-align: left; background: white; border: 1px solid var(--line); border-radius: 17px; padding: 12px; cursor: pointer; color: inherit; }
+    .store-card.selected { border: 1.5px solid var(--green); background: #f3faf4; box-shadow: 0 4px 12px rgba(47,118,94,.07); }
+    .store-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+    .store-icon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 11px; background: #edf3e6; font-size: 17px; }
+    .favorite-mini { position: absolute; top: 9px; right: 8px; border: 0; background: #fff; width: 27px; height: 27px; display: grid; place-items: center; border-radius: 9px; cursor: pointer; color: #a9b1ab; }
+    .favorite-mini svg { width: 14px; height: 14px; }
+    .favorite-mini.is-fav { color: #dd8b66; background: #fff3eb; }
+    .store-name { margin: 11px 0 5px; font-size: 11px; font-weight: 900; line-height: 1.4; padding-right: 7px; }
+    .store-distance { color: var(--muted); font-size: 9px; }
+    .store-status { margin-top: 11px; display: flex; align-items: center; justify-content: space-between; font-size: 9px; color: #6f7e74; }
+    .open-dot { display: inline-flex; gap: 4px; align-items: center; color: var(--green); font-weight: 800; }
+    .open-dot:before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #5aa878; }
+    .store-inventory-head { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 11px; }
+    .selected-store-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .selected-store-line .store-icon { flex: 0 0 auto; }
+    .selected-store-title { font-size: 14px; font-weight: 900; margin: 0; overflow-wrap: anywhere; }
+    .selected-store-caption { color: var(--muted); font-size: 9px; margin-top: 3px; }
+    .map-placeholder { margin-top: 15px; border-radius: 16px; height: 74px; background: linear-gradient(130deg,#e1eee2,#f0f0df); position: relative; overflow: hidden; border: 1px solid #e7ece1; }
+    .map-placeholder:before, .map-placeholder:after { content: ""; position: absolute; background: rgba(255,255,255,.75); border-radius: 50%; transform: rotate(-22deg); }
+    .map-placeholder:before { width: 360px; height: 14px; left: -24px; top: 30px; }
+    .map-placeholder:after { width: 17px; height: 150px; left: 53%; top: -38px; transform: rotate(35deg); }
+    .map-label { position: absolute; bottom: 9px; left: 11px; z-index: 1; padding: 5px 8px; background: rgba(255,255,255,.86); border-radius: 8px; font-size: 9px; font-weight: 800; }
+    .map-pin { position: absolute; z-index: 2; left: 57%; top: 13px; font-size: 25px; filter: drop-shadow(0 3px 3px rgba(33,65,44,.15)); }
+    .profile-card { margin-top: 17px; border-radius: 22px; padding: 17px; color: white; background: linear-gradient(125deg,#263e34,#345b47); position: relative; overflow: hidden; }
+    .profile-card:after { content: ""; position: absolute; width: 140px; height: 140px; border-radius: 50%; right: -28px; top: -67px; border: 1px solid rgba(255,255,255,.17); box-shadow: 0 0 0 17px rgba(255,255,255,.03),0 0 0 35px rgba(255,255,255,.025); }
+    .profile-top { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+    .avatar { width: 51px; height: 51px; border-radius: 17px; display: grid; place-items: center; background: #dceecb; font-size: 26px; border: 2px solid rgba(255,255,255,.42); }
+    .profile-name { font-size: 16px; font-weight: 900; margin: 0; }
+    .profile-caption { margin-top: 5px; color: rgba(255,255,255,.68); font-size: 10px; }
+    .member-tag { margin-left: auto; align-self: flex-start; padding: 5px 7px; border-radius: 8px; background: rgba(232,244,169,.17); color: #e8f4a9; font-size: 9px; font-weight: 900; }
+    .points-row { display: flex; align-items: end; justify-content: space-between; margin-top: 19px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.17); position: relative; z-index: 1; }
+    .points-label { font-size: 10px; color: rgba(255,255,255,.73); }
+    .points-value { margin-top: 3px; font-size: 28px; font-weight: 900; letter-spacing: -.05em; }
+    .points-value small { font-size: 12px; margin-left: 4px; letter-spacing: 0; }
+    .points-link { padding: 8px 10px; border: 1px solid rgba(255,255,255,.22); color: white; background: rgba(255,255,255,.07); border-radius: 10px; font-size: 10px; font-weight: 800; cursor: pointer; }
+    .settings-list { border-radius: 17px; overflow: hidden; background: white; border: 1px solid #edf0eb; }
+    .setting-row { width: 100%; display: flex; align-items: center; gap: 11px; padding: 13px 13px; background: white; border: 0; border-bottom: 1px solid #f0f2ee; cursor: pointer; text-align: left; color: inherit; }
+    .setting-row:last-child { border-bottom: 0; }
+    .setting-icon { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 11px; background: #f0f5ee; display: grid; place-items: center; font-size: 15px; }
+    .setting-copy { min-width: 0; flex: 1; }
+    .setting-title { font-size: 11px; font-weight: 900; }
+    .setting-sub { margin-top: 3px; font-size: 9px; color: var(--muted); }
+    .chevron { color: #a8b0aa; font-size: 19px; }
+    .favorite-manage { display: flex; flex-direction: column; gap: 8px; }
+    .favorite-row { display: flex; align-items: center; gap: 10px; background: white; border: 1px solid #edf0eb; border-radius: 14px; padding: 10px; }
+    .favorite-row .store-icon { flex: 0 0 auto; }
+    .favorite-row-copy { flex: 1; min-width: 0; }
+    .favorite-row-name { font-size: 11px; font-weight: 900; }
+    .favorite-row-distance { font-size: 9px; color: var(--muted); margin-top: 4px; }
+    .follow-button { flex: 0 0 auto; padding: 7px 9px; border-radius: 9px; border: 1px solid #bfdac9; color: var(--green); background: #eff8f1; font-size: 9px; font-weight: 900; cursor: pointer; }
+    .follow-button.following { border-color: #e9e9e4; color: #849087; background: #f7f8f4; }
+    .demo-note { text-align: center; margin: 18px 0 0; color: #a1aaa4; font-size: 9px; line-height: 1.7; }
+    .modal-backdrop { position: absolute; inset: 0; z-index: 10; background: rgba(24,39,31,.43); display: flex; align-items: flex-end; padding: 0; animation: fadeIn .16s ease-out; }
+    .modal-backdrop.hidden { display: none; }
+    @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+    .modal-sheet { width: 100%; max-height: 82%; overflow-y: auto; background: var(--paper); border-radius: 25px 25px 0 0; padding: 12px 20px 27px; box-shadow: 0 -12px 40px rgba(20,39,27,.15); animation: slideUp .22s ease-out; }
+    @keyframes slideUp { from {transform: translateY(35px)} to {transform: translateY(0)} }
+    .sheet-handle { width: 37px; height: 4px; border-radius: 9px; background: #d7ded7; margin: 0 auto 17px; }
+    .modal-top { display: flex; align-items: flex-start; gap: 13px; }
+    .modal-product-visual { width: 77px; height: 80px; flex: 0 0 auto; border-radius: 19px; display: grid; place-items: center; font-size: 38px; }
+    .modal-product-copy { min-width: 0; flex: 1; }
+    .modal-product-name { font-size: 18px; font-weight: 900; line-height: 1.35; margin: 3px 0 5px; }
+    .modal-price { color: var(--muted); font-size: 12px; }
+    .modal-close { width: 29px; height: 29px; border: 0; border-radius: 10px; background: #eaf0e9; color: #617067; font-size: 20px; cursor: pointer; flex: 0 0 auto; }
+    .modal-section-title { margin: 23px 0 10px; font-size: 13px; font-weight: 900; }
+    .store-stock-row { display: flex; align-items: center; gap: 9px; background: white; padding: 11px; border: 1px solid #edf0eb; border-radius: 13px; margin-bottom: 7px; }
+    .store-stock-row .store-icon { width: 30px; height: 30px; flex: 0 0 auto; }
+    .store-stock-name { flex: 1; min-width: 0; font-size: 11px; font-weight: 800; }
+    .store-stock-qty { font-size: 10px; color: var(--muted); text-align: right; }
+    .store-stock-qty strong { color: var(--ink); font-size: 13px; }
+    .modal-action { width: 100%; border: 0; border-radius: 14px; padding: 13px; margin-top: 14px; color: white; background: var(--green); font-size: 12px; font-weight: 900; cursor: pointer; }
+    .toast { position: absolute; z-index: 20; left: 50%; bottom: 83px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; white-space: nowrap; background: #24352c; color: white; border-radius: 12px; padding: 11px 15px; font-size: 11px; font-weight: 800; box-shadow: 0 8px 20px rgba(23,41,29,.2); transition: .2s; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .small-divider { height: 1px; background: var(--line); margin: 18px 0; }
+    @media (max-width: 480px) {
+      body { display: block; padding: 0; background: var(--paper); }
+      .device { width: 100%; height: 100dvh; min-height: 560px; padding: 0; border-radius: 0; background: var(--paper); box-shadow: none; }
+      .screen { border-radius: 0; }
+      .statusbar { padding-left: 23px; padding-right: 23px; }
+      .modal-backdrop { position: fixed; }
+      .modal-sheet { max-width: 402px; margin: 0 auto; }
+      .toast { bottom: 84px; }
+    }
+    @media (max-height: 720px) and (min-width: 481px) {
+      body { align-items: flex-start; }
+      .device { height: 700px; min-height: 650px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="status-icons"><span class="signal"><i></i><i></i><i></i><i></i></span><span class="wifi">⌁</span><span class="battery"><span></span></span></span>
+      </div>
+      <header class="app-header">
+        <button class="brand" data-page="home" aria-label="mikke ホームへ">
+          <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5"/><path d="M6.5 9.5V20h11V9.5"/><path d="M9.5 20v-6h5v6"/></svg></span>
+          <span class="brand-word">mikke<span>.</span></span>
+        </button>
+        <div class="header-actions">
+          <button class="icon-button" id="notificationButton" aria-label="お知らせ"><span class="notification-dot"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
+        </div>
+      </header>
+      <main class="app-content" id="appContent" aria-live="polite"></main>
+      <nav class="bottom-nav" aria-label="メインメニュー">
+        <button class="nav-item active" data-page="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9 21v-7h6v7"/></svg><span>ホーム</span></button>
+        <button class="nav-item" data-page="stores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18l-1.5-6h-15z"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/><path d="M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg><span>店舗</span></button>
+        <button class="nav-item" data-page="mypage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>マイページ</span></button>
+      </nav>
+      <div class="modal-backdrop hidden" id="modalBackdrop" role="dialog" aria-modal="true" aria-label="商品詳細">
+        <section class="modal-sheet" id="modalSheet"></section>
+      </div>
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+  </div>
+
+  <script>
+    // デモ用の架空データです。実際の店舗・在庫とは連動していません。
+    const categories = [
+      { id: 'all', label: 'すべて', emoji: '✦' },
+      { id: 'food', label: '食品', emoji: '🥐' },
+      { id: 'drink', label: '飲料', emoji: '🥤' },
+      { id: 'daily', label: '日用品', emoji: '🧴' },
+      { id: 'stationery', label: '文房具', emoji: '✏️' }
+    ];
+    const stores = [
+      { id: 'station', name: '中央駅前店', distance: '徒歩 4 分', address: '中央駅 東口から約250m', icon: '🏬', hours: '営業中', tone: 'green' },
+      { id: 'mall', name: 'グリーンモール店', distance: '徒歩 8 分', address: 'グリーンモール 1F', icon: '🛍️', hours: '営業中', tone: 'yellow' },
+      { id: 'west', name: '西口店', distance: '徒歩 12 分', address: '西口通り沿い', icon: '🏪', hours: '営業中', tone: 'blue' },
+      { id: 'park', name: 'さくら公園前店', distance: '徒歩 15 分', address: 'さくら公園の向かい', icon: '🌳', hours: '営業中', tone: 'pink' }
+    ];
+    const products = [
+      { id: 'bread', name: 'ふんわり食パン', category: 'food', emoji: '🍞', tone: 'yellow', price: 168, stocks: { station: 12, mall: 4, west: 0, park: 7 } },
+      { id: 'banana', name: '朝採れバナナ', category: 'food', emoji: '🍌', tone: 'green', price: 198, stocks: { station: 3, mall: 11, west: 5, park: 2 } },
+      { id: 'onigiri', name: '手づくりおにぎり', category: 'food', emoji: '🍙', tone: 'pink', price: 138, stocks: { station: 8, mall: 0, west: 14, park: 4 } },
+      { id: 'coffee', name: 'カフェラテ 500ml', category: 'drink', emoji: '🥤', tone: 'blue', price: 158, stocks: { station: 18, mall: 6, west: 2, park: 0 } },
+      { id: 'water', name: '天然水 2L', category: 'drink', emoji: '💧', tone: 'blue', price: 108, stocks: { station: 24, mall: 16, west: 9, park: 12 } },
+      { id: 'tea', name: '緑茶 600ml', category: 'drink', emoji: '🍵', tone: 'green', price: 128, stocks: { station: 2, mall: 7, west: 3, park: 6 } },
+      { id: 'tissue', name: 'やわらかティッシュ', category: 'daily', emoji: '🧻', tone: 'purple', price: 248, stocks: { station: 5, mall: 8, west: 0, park: 3 } },
+      { id: 'soap', name: 'ハンドソープ', category: 'daily', emoji: '🧴', tone: 'pink', price: 328, stocks: { station: 0, mall: 5, west: 7, park: 1 } },
+      { id: 'mask', name: 'やさしい不織布マスク', category: 'daily', emoji: '😷', tone: 'blue', price: 398, stocks: { station: 9, mall: 2, west: 4, park: 0 } },
+      { id: 'pen', name: 'なめらかボールペン', category: 'stationery', emoji: '🖊️', tone: 'purple', price: 110, stocks: { station: 14, mall: 3, west: 8, park: 5 } },
+      { id: 'notebook', name: 'A5ノート', category: 'stationery', emoji: '📓', tone: 'yellow', price: 158, stocks: { station: 1, mall: 0, west: 11, park: 2 } },
+      { id: 'sticky', name: 'カラフル付せん', category: 'stationery', emoji: '🗒️', tone: 'orange', price: 220, stocks: { station: 6, mall: 2, west: 0, park: 8 } }
+    ];
+    const categoryLabel = id => (categories.find(c => c.id === id) || categories[0]).label;
+    const storeById = id => stores.find(s => s.id === id);
+    const productById = id => products.find(p => p.id === id);
+    const money = n => '¥' + n.toLocaleString('ja-JP');
+
+    let activePage = 'home';
+    let homeCategory = 'all';
+    let storeCategory = 'all';
+    let homeScope = 'favorites';
+    let selectedStore = 'station';
+    let storeSearch = '';
+    let favorites = loadFavorites();
+    let currentProductId = null;
+    let toastTimer = null;
+
+    function loadFavorites() {
+      try {
+        const saved = localStorage.getItem('mikke-demo-favorites');
+        return saved ? JSON.parse(saved).filter(id => stores.some(s => s.id === id)) : ['station', 'mall'];
+      } catch (_) { return ['station', 'mall']; }
+    }
+    function saveFavorites() {
+      try { localStorage.setItem('mikke-demo-favorites', JSON.stringify(favorites)); } catch (_) {}
+    }
+    function stockStatus(qty) {
+      if (qty <= 0) return { label: '在庫なし', cls: 'stock-out' };
+      if (qty <= 3) return { label: '残りわずか', cls: 'stock-low' };
+      return { label: '在庫あり', cls: 'stock-good' };
+    }
+    function categoryFilterMarkup(selected, target) {
+      return `<div class="category-row" role="group" aria-label="カテゴリーで絞り込み">${categories.map(cat => `
+        <button class="category-pill ${selected === cat.id ? 'active' : ''}" data-category="${cat.id}" data-category-target="${target}" aria-pressed="${selected === cat.id}"><span class="cat-emoji">${cat.emoji}</span>${cat.label}</button>
+      `).join('')}</div>`;
+    }
+    function productCardMarkup(product, storeIds, mode = 'aggregate') {
+      const stockValues = storeIds.map(id => product.stocks[id] || 0);
+      const total = stockValues.reduce((a,b) => a+b, 0);
+      const inStock = stockValues.filter(n => n > 0).length;
+      const qty = mode === 'single' ? (product.stocks[storeIds[0]] || 0) : total;
+      const status = stockStatus(qty);
+      const countLabel = mode === 'single' ? '個' : '個 / ' + inStock + '店舗';
+      return `<button class="product-card" data-product="${product.id}" aria-label="${product.name}の商品詳細">
+        <span class="product-visual visual-${product.tone}">${product.emoji}</span>
+        <span class="product-info"><span class="product-category">${categoryLabel(product.category)}</span><span class="product-name">${product.name}</span><span class="product-price">${money(product.price)} <span style="font-size:9px">税込</span></span></span>
+        <span class="stock-column"><span class="stock-badge ${status.cls}">${status.label}</span><span class="stock-number"><strong>${qty}</strong>${countLabel}</span></span>
+      </button>`;
+    }
+    function filteredProducts(category) {
+      return products.filter(p => category === 'all' || p.category === category);
+    }
+    function renderHome() {
+      const scopeStores = homeScope === 'favorites' ? (favorites.length ? favorites : stores.map(s => s.id)) : stores.map(s => s.id);
+      const visibleProducts = filteredProducts(homeCategory).filter(p => scopeStores.some(id => (p.stocks[id] || 0) > 0) || homeScope === 'all');
+      return `<div class="page">
+        <p class="eyebrow" style="margin-top:8px">GOOD MORNING ☀️</p>
+        <h1 class="page-title">今日のお買い物、<br>もっとスマートに。</h1>
+        <p class="page-subtitle">お店に行く前に、気になる商品の在庫をチェック。</p>
+        <section class="hero-card">
+          <span class="hero-label">✦ お買い物サポート</span>
+          <h2>あるかな？を、<br>行く前にチェック。</h2>
+          <p>いつものお店の在庫がひと目でわかる。</p>
+          <span class="hero-illustration" aria-hidden="true">🛒</span>
+        </section>
+        <div class="section-head"><h2 class="section-title">在庫をチェック</h2><span class="section-meta">デモ在庫</span></div>
+        <div class="scope-row" role="group" aria-label="表示する店舗">
+          <button class="pill ${homeScope === 'favorites' ? 'active' : ''}" data-home-scope="favorites" aria-pressed="${homeScope === 'favorites'}">♡ お気に入り店舗</button>
+          <button class="pill ${homeScope === 'all' ? 'active' : ''}" data-home-scope="all" aria-pressed="${homeScope === 'all'}">すべての店舗</button>
+        </div>
+        <div style="height:13px"></div>
+        ${categoryFilterMarkup(homeCategory, 'home')}
+        <div class="section-head" style="margin-top:18px"><h2 class="section-title">${homeCategory === 'all' ? 'おすすめ商品' : categoryLabel(homeCategory)}</h2><span class="section-meta">${visibleProducts.length} 商品</span></div>
+        <div class="product-list">${visibleProducts.length ? visibleProducts.map(p => productCardMarkup(p, scopeStores, 'aggregate')).join('') : `<div class="empty-state"><div class="empty-icon">🧺</div>この条件の商品はありません。<br>カテゴリーや店舗を変えてみてください。</div>`}</div>
+        <p class="stock-footnote">※ 表示されている在庫数はデモ用の架空データです。</p>
+      </div>`;
+    }
+    function storeCardMarkup(store) {
+      const isFavorite = favorites.includes(store.id);
+      return `<article class="store-card ${selectedStore === store.id ? 'selected' : ''}">
+        <button class="favorite-mini ${isFavorite ? 'is-fav' : ''}" data-toggle-favorite="${store.id}" aria-label="${store.name}を${isFavorite ? 'お気に入り解除' : 'お気に入り登録'}" aria-pressed="${isFavorite}"><svg viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 20-1.6-1.45C5 13.65 2 10.9 2 7.5A5.5 5.5 0 0 1 7.5 2c1.74 0 3.4.81 4.5 2.09A6 6 0 0 1 16.5 2 5.5 5.5 0 0 1 22 7.5c0 3.4-3 6.15-8.4 11.06z"/></svg></button>
+        <button class="store-select-button" data-select-store="${store.id}" style="border:0;background:transparent;padding:0;width:100%;text-align:left;color:inherit;cursor:pointer">
+          <span class="store-card-top"><span class="store-icon">${store.icon}</span></span>
+          <span class="store-name">${store.name}</span><span class="store-distance">${store.distance}</span>
+          <span class="store-status"><span class="open-dot">${store.hours}</span><span>${Object.values(products.reduce((a,p) => { if ((p.stocks[store.id] || 0) > 0) a[p.id] = true; return a; }, {})).length}商品</span></span>
+        </button>
+      </article>`;
+    }
+    function renderStores() {
+      const visibleStores = stores.filter(s => (s.name + s.address).toLowerCase().includes(storeSearch.toLowerCase()));
+      const store = storeById(selectedStore) || stores[0];
+      const visibleProducts = filteredProducts(storeCategory);
+      return `<div class="page">
+        <p class="eyebrow" style="margin-top:8px">NEARBY SHOPS</p>
+        <h1 class="page-title">近くのお店を<br>探してみよう。</h1>
+        <p class="page-subtitle">お店を選ぶと、その店舗の在庫を確認できます。</p>
+        <div class="searchbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="storeSearch" type="search" placeholder="店舗名で検索" value="${escapeHtml(storeSearch)}" aria-label="店舗名で検索" /></div>
+        <div class="map-placeholder" aria-label="周辺店舗のイメージ地図"><span class="map-label">📍 周辺の店舗（イメージ）</span><span class="map-pin">📍</span></div>
+        <div class="section-head"><h2 class="section-title">近くの店舗</h2><span class="section-meta">${visibleStores.length} 店舗</span></div>
+        <div class="store-rail">${visibleStores.length ? visibleStores.map(storeCardMarkup).join('') : `<div class="empty-state" style="min-width:100%">店舗が見つかりませんでした。</div>`}</div>
+        <div class="store-inventory-head"><div class="selected-store-line"><span class="store-icon">${store.icon}</span><div><h2 class="selected-store-title">${store.name}</h2><div class="selected-store-caption">${store.address}</div></div></div><span class="open-dot" style="font-size:9px;white-space:nowrap">${store.hours}</span></div>
+        ${categoryFilterMarkup(storeCategory, 'stores')}
+        <div class="section-head" style="margin-top:17px"><h2 class="section-title">店舗の在庫</h2><span class="section-meta">${visibleProducts.length} 商品</span></div>
+        <div class="product-list">${visibleProducts.map(p => productCardMarkup(p, [store.id], 'single')).join('')}</div>
+        <p class="stock-footnote">※ 店舗名・距離・営業時間・在庫数はすべてデモ用の架空データです。位置情報は取得していません。</p>
+      </div>`;
+    }
+    function renderMyPage() {
+      const favoriteStores = stores.filter(s => favorites.includes(s.id));
+      return `<div class="page">
+        <p class="eyebrow" style="margin-top:8px">MY PAGE</p>
+        <h1 class="page-title">マイページ</h1>
+        <p class="page-subtitle">お気に入りのお店やポイントを管理できます。</p>
+        <section class="profile-card">
+          <div class="profile-top"><div class="avatar">🙂</div><div><h2 class="profile-name">デモユーザー</h2><div class="profile-caption">mikke メンバー</div></div><span class="member-tag">BRONZE</span></div>
+          <div class="points-row"><div><div class="points-label">現在の所持ポイント</div><div class="points-value">1,280<small>pt</small></div></div><button class="points-link" data-action="points">ポイント履歴　›</button></div>
+        </section>
+        <div class="section-head"><h2 class="section-title">お気に入り店舗</h2><span class="section-meta">${favoriteStores.length} 店舗 登録中</span></div>
+        <div class="favorite-manage">${favoriteStores.length ? favoriteStores.map(s => `<div class="favorite-row"><span class="store-icon">${s.icon}</span><div class="favorite-row-copy"><div class="favorite-row-name">${s.name}</div><div class="favorite-row-distance">${s.distance} · ${s.address}</div></div><button class="follow-button following" data-toggle-favorite="${s.id}">登録済み ✓</button></div>`).join('') : `<div class="empty-state"><div class="empty-icon">♡</div>お気に入り店舗はまだありません。<br>「店舗」ページから登録できます。</div>`}</div>
+        <div class="section-head"><h2 class="section-title">アカウント</h2></div>
+        <div class="settings-list">
+          <button class="setting-row" data-action="points"><span class="setting-icon">🎁</span><span class="setting-copy"><span class="setting-title">ポイント履歴</span><span class="setting-sub">ポイントの獲得・利用履歴</span></span><span class="chevron">›</span></button>
+          <button class="setting-row" data-action="notifications"><span class="setting-icon">🔔</span><span class="setting-copy"><span class="setting-title">お知らせ設定</span><span class="setting-sub">お気に入り商品の在庫情報など</span></span><span class="chevron">›</span></button>
+          <button class="setting-row" data-action="help"><span class="setting-icon">💬</span><span class="setting-copy"><span class="setting-title">ヘルプ・お問い合わせ</span><span class="setting-sub">アプリの使い方を見る</span></span><span class="chevron">›</span></button>
+        </div>
+        <p class="demo-note">mikke demo ver. 1.0<br>画面に表示される会員情報・ポイントは架空のものです。</p>
+      </div>`;
+    }
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function render() {
+      const content = document.getElementById('appContent');
+      content.innerHTML = activePage === 'home' ? renderHome() : activePage === 'stores' ? renderStores() : renderMyPage();
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        const isActive = btn.dataset.page === activePage;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+      });
+    }
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+    function toggleFavorite(id) {
+      if (favorites.includes(id)) {
+        favorites = favorites.filter(value => value !== id);
+        showToast(`${storeById(id).name}をお気に入りから解除しました`);
+      } else {
+        favorites.push(id);
+        showToast(`${storeById(id).name}をお気に入りに登録しました`);
+      }
+      saveFavorites();
+      render();
+    }
+    function openProduct(id) {
+      const p = productById(id);
+      if (!p) return;
+      currentProductId = id;
+      const rows = stores.map(s => {
+        const qty = p.stocks[s.id] || 0;
+        const status = stockStatus(qty);
+        return `<div class="store-stock-row"><span class="store-icon">${s.icon}</span><span class="store-stock-name">${s.name}<br><span style="font-size:9px;color:#98a29b;font-weight:500">${s.distance}</span></span><span class="stock-badge ${status.cls}">${status.label}</span><span class="store-stock-qty"><strong>${qty}</strong> 個</span></div>`;
+      }).join('');
+      document.getElementById('modalSheet').innerHTML = `<div class="sheet-handle"></div><div class="modal-top"><div class="modal-product-visual visual-${p.tone}">${p.emoji}</div><div class="modal-product-copy"><p class="eyebrow">${categoryLabel(p.category)}</p><h2 class="modal-product-name">${p.name}</h2><div class="modal-price">${money(p.price)}（税込）</div></div><button class="modal-close" data-action="close-modal" aria-label="閉じる">×</button></div><h3 class="modal-section-title">店舗ごとの在庫状況</h3>${rows}<button class="modal-action" data-action="alert" data-alert-product="${p.id}">この商品の在庫通知を設定</button><p class="stock-footnote">※ デモのため、通知は実際には送信されません。</p>`;
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.classList.remove('hidden');
+      backdrop.dataset.open = 'true';
+    }
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.add('hidden');
+      currentProductId = null;
+    }
+    function openInfoModal(type) {
+      const configs = {
+        points: { icon: '🎁', title: 'ポイント履歴', subtitle: '現在の所持ポイント：1,280 pt', body: `<div class="store-stock-row"><span class="setting-icon">＋</span><span class="store-stock-name">お買い物ポイント（デモ）</span><span class="store-stock-qty" style="color:#347d59;font-weight:900">+180 pt</span></div><div class="store-stock-row"><span class="setting-icon">＋</span><span class="store-stock-name">来店ポイント（デモ）</span><span class="store-stock-qty" style="color:#347d59;font-weight:900">+50 pt</span></div><div class="store-stock-row"><span class="setting-icon">−</span><span class="store-stock-name">ポイント利用（デモ）</span><span class="store-stock-qty" style="color:#bc6259;font-weight:900">−100 pt</span></div>` },
+        notifications: { icon: '🔔', title: 'お知らせ設定', subtitle: '通知設定（デモ）', body: `<div class="store-stock-row"><span class="setting-icon">📦</span><span class="store-stock-name">お気に入り商品の在庫情報</span><span class="stock-badge stock-good">ON</span></div><div class="store-stock-row"><span class="setting-icon">🏷️</span><span class="store-stock-name">お得なキャンペーン情報</span><span class="stock-badge stock-good">ON</span></div>` },
+        help: { icon: '💬', title: 'ヘルプ・お問い合わせ', subtitle: 'mikkeの使い方', body: `<div class="empty-state" style="text-align:left">①「ホーム」でお気に入り店舗の商品在庫を確認<br>②「店舗」で店舗を選び、カテゴリ別に在庫を確認<br>③ 気になる商品をタップすると、全店舗の在庫が見られます<br><br>このアプリは発表用のデモ版です。実際のお店や在庫とは連動していません。</div>` }
+      };
+      const c = configs[type];
+      if (!c) return;
+      document.getElementById('modalSheet').innerHTML = `<div class="sheet-handle"></div><div class="modal-top"><div class="modal-product-visual visual-green">${c.icon}</div><div class="modal-product-copy"><h2 class="modal-product-name">${c.title}</h2><div class="modal-price">${c.subtitle}</div></div><button class="modal-close" data-action="close-modal" aria-label="閉じる">×</button></div><div style="margin-top:18px">${c.body}</div><button class="modal-action" data-action="close-modal">閉じる</button>`;
+      document.getElementById('modalBackdrop').classList.remove('hidden');
+    }
+
+    document.addEventListener('click', event => {
+      const pageButton = event.target.closest('[data-page]');
+      if (pageButton) {
+        activePage = pageButton.dataset.page;
+        render();
+        document.getElementById('appContent').scrollTop = 0;
+        return;
+      }
+      const categoryButton = event.target.closest('[data-category]');
+      if (categoryButton) {
+        const target = categoryButton.dataset.categoryTarget;
+        if (target === 'home') homeCategory = categoryButton.dataset.category;
+        else storeCategory = categoryButton.dataset.category;
+        render();
+        return;
+      }
+      const scopeButton = event.target.closest('[data-home-scope]');
+      if (scopeButton) { homeScope = scopeButton.dataset.homeScope; render(); return; }
+      const favButton = event.target.closest('[data-toggle-favorite]');
+      if (favButton) { event.stopPropagation(); toggleFavorite(favButton.dataset.toggleFavorite); return; }
+      const selectButton = event.target.closest('[data-select-store]');
+      if (selectButton) { selectedStore = selectButton.dataset.selectStore; render(); return; }
+      const productButton = event.target.closest('[data-product]');
+      if (productButton) { openProduct(productButton.dataset.product); return; }
+      const actionButton = event.target.closest('[data-action]');
+      if (actionButton) {
+        const action = actionButton.dataset.action;
+        if (action === 'close-modal') closeModal();
+        if (action === 'points' || action === 'notifications' || action === 'help') openInfoModal(action);
+        if (action === 'alert') { const p = productById(actionButton.dataset.alertProduct); closeModal(); showToast(`「${p.name}」の在庫通知を設定しました（デモ）`); }
+        return;
+      }
+    });
+    document.getElementById('appContent').addEventListener('input', event => {
+      if (event.target.id === 'storeSearch') {
+        const cursorPosition = event.target.selectionStart;
+        storeSearch = event.target.value;
+        const start = document.getElementById('appContent').scrollTop;
+        render();
+        const input = document.getElementById('storeSearch');
+        input.focus();
+        input.setSelectionRange(cursorPosition, cursorPosition);
+        document.getElementById('appContent').scrollTop = start;
+      }
+    });
+    document.getElementById('modalBackdrop').addEventListener('click', event => {
+      if (event.target.id === 'modalBackdrop') closeModal();
+    });
+    document.getElementById('notificationButton').addEventListener('click', () => showToast('新しいお知らせはありません（デモ）'));
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+    render();
+  </script>
+</body>
+</html>
